@@ -9,6 +9,23 @@ from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import OpenAIEmbeddings
 
 
+def peek_book_metadata(file_path: str) -> dict:
+    """Read only the TITLE and AUTHOR header lines without parsing the full book."""
+    title, author = "", ""
+    title_pattern  = re.compile(r"TITLE:\s+(.+)$")
+    author_pattern = re.compile(r"AUTHOR:\s+(.+)$")
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if not title and title_pattern.match(stripped):
+                title = stripped.removeprefix("TITLE: ")
+            if not author and author_pattern.match(stripped):
+                author = stripped.removeprefix("AUTHOR: ")
+            if title and author:
+                break
+    return {"title": title, "author": author}
+
+
 def load_book_with_metadata_by_chapter(file_path: str) -> List[Document]:
     documents = []
     chapter_patters = re.compile(r"CHAPTER \d+")

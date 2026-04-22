@@ -71,14 +71,14 @@ def get_documents_with_citations(vector_store, question):
         }
     )
 
-    return chain_response, retrieved_docs
+    return chain_response, formatted_docs
 
 
 # ---
 #  UI with streamlit
 SAMPLE_QUESTIONS = [
-    "Where does Sherlock live?",
-    "Who is Sherlock Holmes's ultimate intellectual rival?",
+    "Who is Sherlock's friend?",
+    "Who is Sherlock Holmes's rival??",
     "What is 'arga treasure'?",
     "What happened in Dartmoor?",
 ]
