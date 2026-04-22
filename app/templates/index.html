@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Assistant with Citations</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0e1117;
+      color: #fafafa;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .container { width: 100%; max-width: 760px; }
+
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+
+    .subtitle {
+      color: #a0a0b0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    details {
+      background: #1a1d27;
+      border: 1px solid #2e3047;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #c0c0d0;
+      user-select: none;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "▶  "; font-size: 0.7rem; }
+    details[open] summary::before { content: "▼  "; }
+
+    .sample-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem 1rem;
+    }
+
+    .sample-btn {
+      background: #262938;
+      border: 1px solid #3a3d55;
+      color: #c8c8e0;
+      border-radius: 6px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sample-btn:hover { background: #31354a; }
+
+    textarea {
+      width: 100%;
+      background: #1a1d27;
+      border: 1px solid #2e3047;
+      border-radius: 8px;
+      color: #fafafa;
+      font-size: 0.95rem;
+      padding: 0.75rem 1rem;
+      resize: vertical;
+      min-height: 100px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    textarea:focus { border-color: #5b5fc7; }
+    textarea::placeholder { color: #555770; }
+
+    .ask-btn {
+      margin-top: 0.75rem;
+      background: #5b5fc7;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.6rem 1.6rem;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .ask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ask-btn:not(:disabled):hover { background: #4a4eb5; }
+
+    .spinner {
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      color: #a0a0b0;
+      font-size: 0.9rem;
+      margin-top: 1.25rem;
+    }
+    .spinner.active { display: flex; }
+    .dot-flashing {
+      position: relative;
+      width: 8px; height: 8px;
+      background: #5b5fc7;
+      border-radius: 50%;
+      animation: dot-flashing 1s infinite alternate;
+    }
+    .dot-flashing::before, .dot-flashing::after {
+      content: ""; position: absolute; top: 0;
+      width: 8px; height: 8px; background: #5b5fc7; border-radius: 50%;
+    }
+    .dot-flashing::before { left: -12px; animation: dot-flashing 1s infinite alternate 0.25s; }
+    .dot-flashing::after  { left:  12px; animation: dot-flashing 1s infinite alternate 0.5s; }
+    @keyframes dot-flashing { 0% { opacity: 1; } 100% { opacity: 0.2; } }
+
+    .answer-card {
+      margin-top: 1.25rem;
+      background: #1a1d27;
+      border: 1px solid #2e3047;
+      border-left: 4px solid #5b5fc7;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+    }
+
+    .sources-header {
+      margin-top: 1.5rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #c0c0d0;
+      margin-bottom: 0.5rem;
+    }
+
+    .source-item {
+      background: #1a1d27;
+      border: 1px solid #2e3047;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+    }
+    .source-item summary {
+      font-size: 0.85rem;
+      color: #9090a8;
+      padding: 0.6rem 1rem;
+    }
+    .source-content {
+      padding: 0.75rem 1rem 1rem;
+      font-size: 0.85rem;
+      color: #a09080;
+      line-height: 1.6;
+      border-top: 1px solid #2e3047;
+    }
+
+    .error {
+      margin-top: 1rem;
+      background: #2d1a1a;
+      border: 1px solid #7a3030;
+      border-radius: 8px;
+      color: #e08080;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    .nav-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .nav-btn {
+      background: #1a1d27;
+      border: 1px solid #2e3047;
+      border-radius: 8px;
+      color: #c0c0d0;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.45rem 1rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .nav-btn:hover { background: #262938; border-color: #5b5fc7; }
+
+    /* Modal backdrop */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: #1a1d27;
+      border: 1px solid #2e3047;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 540px;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .modal h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .modal-close:hover { color: #fafafa; }
+
+    /* Books list modal */
+    .book-list { list-style: none; }
+    .book-list li {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #2e3047;
+      font-size: 0.9rem;
+      color: #c0c0d0;
+    }
+    .book-list li:last-child { border-bottom: none; }
+    .book-list .book-author { color: #808090; font-size: 0.8rem; }
+    .book-list .book-date  { color: #505060; font-size: 0.75rem; float: right; }
+    .book-list .empty { color: #505060; font-style: italic; }
+
+    /* Upload modal */
+    .drop-zone {
+      border: 2px dashed #3a3d55;
+      border-radius: 8px;
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #606080;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 1rem;
+    }
+    .drop-zone.drag-over { border-color: #5b5fc7; background: #1e2035; color: #c0c0d0; }
+    .drop-zone.has-file  { border-color: #5b5fc7; color: #a0a0e0; }
+
+    .upload-btn {
+      background: #5b5fc7;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.6rem 1.4rem;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      width: 100%;
+    }
+    .upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .upload-btn:not(:disabled):hover { background: #4a4eb5; }
+
+    .upload-status {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      min-height: 1.2em;
+    }
+    .upload-status.success { color: #60c060; }
+    .upload-status.error   { color: #e08080; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- nav -->
+  <div class="nav-row">
+    <button class="nav-btn" onclick="openBooksModal()">View books</button>
+    <button class="nav-btn" onclick="openUploadModal()">Add a book</button>
+  </div>
+
+  <h1>📚 Book Assistant with Citations</h1>
+  <p class="subtitle">
+    Ask a question and receive an answer with exact source citations. Searches across Arthur Conan Doyle's
+    four full-length Sherlock Holmes novels: A Study in Scarlet, The Sign of the Four,
+    The Hound of the Baskervilles, and The Valley of Fear.
+  </p>
+
+  <details>
+    <summary>💡 Sample questions</summary>
+    <div class="sample-grid">
+      <button class="sample-btn" onclick="setQuestion(this)">Where does Sherlock live?</button>
+      <button class="sample-btn" onclick="setQuestion(this)">Who is Sherlock Holmes's ultimate intellectual rival?</button>
+      <button class="sample-btn" onclick="setQuestion(this)">What is 'agra treasure'?</button>
+      <button class="sample-btn" onclick="setQuestion(this)">What happened in Dartmoor?</button>
+    </div>
+  </details>
+
+  <textarea id="question" placeholder="Ask something about Sherlock Holmes novels..." oninput="onInput()"></textarea>
+  <button class="ask-btn" id="ask-btn" onclick="ask()" disabled>Ask</button>
+
+  <div class="spinner" id="spinner">
+    <div class="dot-flashing"></div>
+    Retrieving sources and generating answer…
+  </div>
+
+  <div id="answer-card"></div>
+  <div id="sources-section"></div>
+  <div id="error-box"></div>
+</div>
+
+<!-- Books modal -->
+<div class="modal-backdrop" id="books-backdrop">
+  <div class="modal">
+    <button class="modal-close" onclick="closeBooksModal()">✕</button>
+    <h2>Ingested books</h2>
+    <ul class="book-list" id="books-list"></ul>
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal-backdrop" id="upload-backdrop">
+  <div class="modal">
+    <button class="modal-close" onclick="closeUploadModal()">✕</button>
+    <h2>Add a book</h2>
+    <div class="drop-zone" id="drop-zone">Drop a .txt file here, or click to browse</div>
+    <button class="upload-btn" id="upload-btn" onclick="uploadBook()" disabled>Upload &amp; ingest</button>
+    <div class="upload-status" id="upload-status"></div>
+  </div>
+</div>
+
+<script>
+  const questionEl = document.getElementById("question");
+  const askBtn     = document.getElementById("ask-btn");
+  const spinner    = document.getElementById("spinner");
+  const answerCard = document.getElementById("answer-card");
+  const sourcesSection = document.getElementById("sources-section");
+  const errorBox   = document.getElementById("error-box");
+
+  function setQuestion(btn) {
+    questionEl.value = btn.textContent;
+    onInput();
+  }
+
+  function onInput() {
+    askBtn.disabled = !questionEl.value.trim();
+  }
+
+  async function ask() {
+    const question = questionEl.value.trim();
+    if (!question) return;
+
+    askBtn.disabled = true;
+    spinner.classList.add("active");
+    answerCard.innerHTML = "";
+    sourcesSection.innerHTML = "";
+    errorBox.innerHTML = "";
+
+    try {
+      const res = await fetch("/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+      const data = await res.json();
+
+      answerCard.innerHTML = `<div class="answer-card">${escapeHtml(data.answer)}</div>`;
+
+      if (data.sources && data.sources.length) {
+        let html = `<p class="sources-header">Retrieved sources</p>`;
+        for (const src of data.sources) {
+          const label = `[${src.index}] ${src.source || "Unknown"}`
+            + (src.author       ? `,  Author: ${src.author}`             : "")
+            + (src.chapter      ? `,  Chapter: ${src.chapter}`           : "")
+            + (src.chapter_title ? `,  Chapter title: ${src.chapter_title}` : "");
+          html += `
+            <details class="source-item">
+              <summary>${escapeHtml(label)}</summary>
+              <div class="source-content">${escapeHtml(src.content)}</div>
+            </details>`;
+        }
+        sourcesSection.innerHTML = html;
+      }
+    } catch (err) {
+      errorBox.innerHTML = `<div class="error">Error: ${escapeHtml(err.message)}</div>`;
+    } finally {
+      spinner.classList.remove("active");
+      askBtn.disabled = !questionEl.value.trim();
+    }
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  /* ── Books modal ── */
+  async function openBooksModal() {
+    document.getElementById("books-backdrop").classList.add("open");
+    const list = document.getElementById("books-list");
+    list.innerHTML = "<li><span class='empty'>Loading…</span></li>";
+    try {
+      const res = await fetch("/books");
+      const data = await res.json();
+      if (!data.books.length) {
+        list.innerHTML = "<li><span class='empty'>No books ingested yet.</span></li>";
+        return;
+      }
+      list.innerHTML = data.books.map(b => `
+        <li>
+          <span class="book-date">${new Date(b.ingested_at).toLocaleDateString()}</span>
+          <strong>${escapeHtml(b.title)}</strong><br>
+          <span class="book-author">${escapeHtml(b.author)}</span>
+        </li>`).join("");
+    } catch {
+      list.innerHTML = "<li><span class='empty'>Failed to load books.</span></li>";
+    }
+  }
+
+  function closeBooksModal() {
+    document.getElementById("books-backdrop").classList.remove("open");
+  }
+
+  /* ── Upload modal ── */
+  let selectedFile = null;
+
+  function openUploadModal() {
+    selectedFile = null;
+    document.getElementById("drop-zone").textContent = "Drop a .txt file here, or click to browse";
+    document.getElementById("drop-zone").classList.remove("has-file");
+    document.getElementById("upload-btn").disabled = true;
+    document.getElementById("upload-status").textContent = "";
+    document.getElementById("upload-status").className = "upload-status";
+    document.getElementById("upload-backdrop").classList.add("open");
+  }
+
+  function closeUploadModal() {
+    document.getElementById("upload-backdrop").classList.remove("open");
+  }
+
+  const dropZone = document.getElementById("drop-zone");
+
+  dropZone.addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".txt";
+    input.onchange = e => setFile(e.target.files[0]);
+    input.click();
+  });
+
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    setFile(e.dataTransfer.files[0]);
+  });
+
+  function setFile(file) {
+    if (!file) return;
+    selectedFile = file;
+    dropZone.textContent = file.name;
+    dropZone.classList.add("has-file");
+    document.getElementById("upload-btn").disabled = false;
+  }
+
+  async function uploadBook() {
+    if (!selectedFile) return;
+    const btn = document.getElementById("upload-btn");
+    const status = document.getElementById("upload-status");
+    btn.disabled = true;
+    status.className = "upload-status";
+    status.textContent = "Uploading…";
+
+    const form = new FormData();
+    form.append("file", selectedFile);
+
+    try {
+      const res = await fetch("/ingest", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      pollTask(data.task_id, status, btn);
+    } catch (err) {
+      status.className = "upload-status error";
+      status.textContent = `Error: ${err.message}`;
+      btn.disabled = false;
+    }
+  }
+
+  async function pollTask(taskId, statusEl, btn) {
+    const STEP_LABELS = {
+      "parsing chapters":       "Parsing chapters…",
+      "semantic chunking":      "Running semantic chunking (this takes a while)…",
+      "writing to vector store": "Writing to vector store…",
+    };
+
+    async function tick() {
+      try {
+        const res = await fetch(`/tasks/${taskId}`);
+        const data = await res.json();
+
+        if (data.state === "SUCCESS") {
+          const r = data.result;
+          statusEl.className = "upload-status success";
+          statusEl.textContent = `Done! "${r.title}" by ${r.author} — ${r.chapters_parsed} chapters, ${r.chunks_added} chunks added.`;
+          selectedFile = null;
+          dropZone.textContent = "Drop a .txt file here, or click to browse";
+          dropZone.classList.remove("has-file");
+          return;
+        }
+
+        if (data.state === "FAILURE") {
+          statusEl.className = "upload-status error";
+          statusEl.textContent = `Failed: ${data.error}`;
+          btn.disabled = false;
+          return;
+        }
+
+        const step = data.result && data.result.step;
+        statusEl.textContent = STEP_LABELS[step] || "Processing…";
+        setTimeout(tick, 2000);
+      } catch {
+        statusEl.className = "upload-status error";
+        statusEl.textContent = "Lost connection while polling. Check server logs.";
+        btn.disabled = false;
+      }
+    }
+
+    tick();
+  }
+
+  /* close modals on backdrop click */
+  document.getElementById("books-backdrop").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeBooksModal();
+  });
+  document.getElementById("upload-backdrop").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeUploadModal();
+  });
+</script>
+</body>
+</html>
