@@ -4,6 +4,28 @@ A RAG (Retrieval-Augmented Generation) application that lets you ask questions a
 answers with exact source citations. Originally built around Arthur Conan Doyle's Sherlock Holmes novels, the app now
 accepts any plain-text book at runtime via an upload endpoint.
 
+## Screenshots
+
+The main UI: a question box, sample questions, and tabs to add or view books.
+
+![Main UI](docs/book_demo_1.jpg)
+
+Uploading a new book - success state showing chapters parsed and chunks added.
+
+![Upload success](docs/book_demo_2_add_new_book.jpg)
+
+Ingestion in progress, with the worker running semantic chunking in the background.
+
+![Ingestion in progress](docs/book_demo_3_add_new_book.jpg)
+
+Viewing all ingested books from the registry.
+
+![Ingested books list](docs/book_demo_4_view_all_books.jpg)
+
+Asking a question and receiving a grounded answer with inline citations and the retrieved source passages.
+
+![Query with citations](docs/book_demo_5.jpg)
+
 ## What it does
 
 You ask a question, and the app retrieves the most relevant passages from the ingested books, feeds them to an LLM, and
@@ -15,17 +37,17 @@ source cards showing the raw retrieved passages beneath each answer.
 
 ## Tech stack
 
-| Layer         | Technology                                                                                     |
-|---------------|------------------------------------------------------------------------------------------------|
-| Web framework | [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)                 |
-| UI            | Jinja2 templates served by FastAPI                                                             |
-| Task queue    | [Celery](https://docs.celeryq.dev/) workers, [RabbitMQ](https://www.rabbitmq.com/) broker      |
-| LLM           | OpenAI `gpt-4o` via [LangChain](https://www.langchain.com/)                                    |
-| Embeddings    | OpenAI `text-embedding-ada-002` (`OpenAIEmbeddings`)                                           |
-| Vector store  | [ChromaDB](https://www.trychroma.com/) (persisted to `chroma_db/`)                             |
-| Chunking      | LangChain `SemanticChunker` (splits by semantic similarity rather than fixed token size)       |
-| Config        | `pydantic-settings` reading from `.env`                                                        |
-| Packaging     | Docker + Docker Compose (api, worker, rabbitmq)                                                |
+| Layer         | Technology                                                                                |
+|---------------|-------------------------------------------------------------------------------------------|
+| Web framework | [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)            |
+| UI            | Jinja2 templates served by FastAPI                                                        |
+| Task queue    | [Celery](https://docs.celeryq.dev/) workers, [RabbitMQ](https://www.rabbitmq.com/) broker |
+| LLM           | OpenAI `gpt-4o` via [LangChain](https://www.langchain.com/)                               |
+| Embeddings    | OpenAI `text-embedding-ada-002` (`OpenAIEmbeddings`)                                      |
+| Vector store  | [ChromaDB](https://www.trychroma.com/) (persisted to `chroma_db/`)                        |
+| Chunking      | LangChain `SemanticChunker` (splits by semantic similarity rather than fixed token size)  |
+| Config        | `pydantic-settings` reading from `.env`                                                   |
+| Packaging     | Docker + Docker Compose (api, worker, rabbitmq)                                           |
 
 ## Architecture
 
@@ -103,7 +125,8 @@ celery -A celery_app worker --loglevel=info
 
 1. **Upload a book**: open the UI and submit a `.txt` file via the upload form (or `POST /ingest` directly with a
    multipart file). The API returns a `task_id` immediately; the worker parses, chunks, embeds, and writes to Chroma in
-   the background. Poll `GET /tasks/{task_id}` to watch progress (`PENDING` -> `STARTED` with a `step` field -> `SUCCESS`
+   the background. Poll `GET /tasks/{task_id}` to watch progress (`PENDING` -> `STARTED` with a `step` field ->
+   `SUCCESS`
    or `FAILURE`).
 2. **Ask a question**: type a question into the query box (or `POST /query` with `{"question": "..."}`). The top 10
    most relevant chunks are retrieved and passed to `gpt-4o` with a strict citation-only prompt. The response includes
@@ -112,14 +135,14 @@ celery -A celery_app worker --loglevel=info
 
 ## API endpoints
 
-| Method | Path              | Purpose                                                  |
-|--------|-------------------|----------------------------------------------------------|
-| GET    | `/`               | Render the web UI                                        |
-| GET    | `/health`         | Health check; reports whether the vector store loaded    |
-| GET    | `/books`          | List ingested books from the registry                    |
-| POST   | `/ingest`         | Upload a `.txt` book; returns a Celery task id           |
-| GET    | `/tasks/{id}`     | Poll the status/result of an ingestion task              |
-| POST   | `/query`          | Ask a question; returns answer + cited source passages   |
+| Method | Path          | Purpose                                                |
+|--------|---------------|--------------------------------------------------------|
+| GET    | `/`           | Render the web UI                                      |
+| GET    | `/health`     | Health check; reports whether the vector store loaded  |
+| GET    | `/books`      | List ingested books from the registry                  |
+| POST   | `/ingest`     | Upload a `.txt` book; returns a Celery task id         |
+| GET    | `/tasks/{id}` | Poll the status/result of an ingestion task            |
+| POST   | `/query`      | Ask a question; returns answer + cited source passages |
 
 ## How a query is answered
 
