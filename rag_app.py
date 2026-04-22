@@ -78,7 +78,7 @@ def get_documents_with_citations(vector_store, question):
 #  UI with streamlit
 SAMPLE_QUESTIONS = [
     "Who is Sherlock's friend?",
-    "Who is Sherlock Holmes's rival??",
+    "Who is Sherlock Holmes's rival?",
     "What is 'arga treasure'?",
     "What happened in Dartmoor?",
 ]
